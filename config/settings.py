@@ -33,12 +33,14 @@ class Config:
     # ============================================
     
     # AWS region where your Amazon Connect instance is located
-    AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
+    # Try CONNECT_AWS_REGION first (for Amplify), fallback to AWS_REGION
+    AWS_REGION = os.getenv('CONNECT_AWS_REGION') or os.getenv('AWS_REGION', 'us-east-1')
     
     # AWS credentials (optional - can use IAM roles or AWS CLI config instead)
-    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-    AWS_SESSION_TOKEN = os.getenv('AWS_SESSION_TOKEN')
+    # Try CONNECT_AWS_* first (for Amplify), fallback to AWS_*
+    AWS_ACCESS_KEY_ID = os.getenv('CONNECT_AWS_ACCESS_KEY_ID') or os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('CONNECT_AWS_SECRET_ACCESS_KEY') or os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_SESSION_TOKEN = os.getenv('CONNECT_AWS_SESSION_TOKEN') or os.getenv('AWS_SESSION_TOKEN')
     
     # ============================================
     # Amazon Connect Configuration
