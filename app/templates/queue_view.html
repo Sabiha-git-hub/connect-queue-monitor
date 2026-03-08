@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Queues - Amazon Connect Queue Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    
+    <!-- Amazon Connect Streams API from CDN -->
+    <script src="https://d366s8lxuwna4d.cloudfront.net/amazon-connect-streams/amazon-connect-1.7.0.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Agent Info -->
+        <header class="app-header">
+            <h1>📊 My Queue Dashboard</h1>
+            <div class="agent-info">
+                <span class="agent-username">👤 {{ agent_username }}</span>
+                {% if detection_mode %}
+                <span class="detection-mode-badge mode-{{ detection_mode }}">
+                    {% if detection_mode == 'automatic' %}
+                        🔗 Auto-Detected
+                    {% else %}
+                        💻 Manual Login
+                    {% endif %}
+                </span>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Hidden CCP Container for Streams API (embedded mode) -->
+        <div id="ccp-container" style="display: none;"></div>
+
+        <!-- Action Buttons -->
+        <div class="action-bar">
+            <button id="refresh-btn" class="btn btn-primary" onclick="refreshQueues()">
+                🔄 Refresh Queues
+            </button>
+            
+            {% if detection_mode == 'manual' %}
+            <a href="/agent/logout" class="btn btn-secondary">
+                🚪 Logout
+            </a>
+            {% endif %}
+            
+            <span id="last-updated" class="last-updated">
+                Last updated: <span id="timestamp">{{ last_updated or 'Just now' }}</span>
+            </span>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="loading-container" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Refreshing queue data...</p>
+        </div>
+
+        <!-- Error Display Area -->
+        <div id="error-container" class="error-message" style="display: none;">
+            <strong>⚠️ Error:</strong> <span id="error-text"></span>
+        </div>
+
+        <!-- Queue Display Table -->
+        <div class="queue-container">
+            <h2>📋 Your Assigned Queues</h2>
+            <p class="queue-description">
+                Showing call counts for all queues in your routing profile, sorted by busiest first.
+            </p>
+
+            {% if queues %}
+            <table class="queue-table" id="queue-table">
+                <thead>
+                    <tr>
+                        <th>Queue Name</th>
+                        <th>Contacts in Queue</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="queue-tbody">
+                    {% for queue in queues %}
+                    <tr class="queue-row {% if queue.contacts_in_queue > 10 %}high-volume{% elif queue.contacts_in_queue > 5 %}medium-volume{% endif %}">
+                        <td class="queue-name">
+                            {{ queue.queue_name }}
+                        </td>
+                        <td class="queue-count">
+                            {% if queue.error %}
+                                <span class="error-indicator" title="{{ queue.error }}">⚠️ Error</span>
+                            {% else %}
+                                <span class="count-badge">{{ queue.contacts_in_queue }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="queue-status">
+                            {% if queue.error %}
+                                <span class="status-error" title="{{ queue.error }}">❌ Failed</span>
+                            {% else %}
+                                <span class="status-ok">✅ Active</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Queue Summary -->
+            <div class="queue-summary">
+                <p>
+                    <strong>Total Queues:</strong> {{ queues|length }} | 
+                    <strong>Total Contacts:</strong> <span id="total-contacts">{{ total_contacts or 0 }}</span>
+                </p>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>📭 No queues found in your routing profile.</p>
+                <p class="help-text">Contact your administrator if you believe this is an error.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Workshop Info -->
+        <div class="workshop-info">
+            <h3>💡 How This Works</h3>
+            <ul>
+                <li><strong>Automatic Refresh:</strong> Click the refresh button to get latest queue metrics</li>
+                <li><strong>Color Coding:</strong> Busier queues are highlighted for quick identification</li>
+                <li><strong>Real-time Data:</strong> Metrics are fetched directly from Amazon Connect APIs</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- JavaScript for Dynamic Refresh -->
+    <script src="{{ url_for('static', filename='js/mode-detector.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/streams.js') }}"></script>
+    <script>
+        // Refresh queue data without page reload
+        function refreshQueues() {
+            console.log('🔄 Refreshing queue data...');
+            
+            // Disable refresh button and show loading
+            const refreshBtn = document.getElementById('refresh-btn');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const errorContainer = document.getElementById('error-container');
+            
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '⏳ Refreshing...';
+            loadingIndicator.style.display = 'block';
+            errorContainer.style.display = 'none';
+            
+            // Make AJAX request to refresh endpoint
+            fetch('/agent/queues/refresh', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Queue data refreshed successfully');
+                    
+                    // Update the queue table
+                    updateQueueTable(data.queues);
+                    
+                    // Update timestamp
+                    const now = new Date();
+                    document.getElementById('timestamp').textContent = now.toLocaleTimeString();
+                    
+                    // Update total contacts
+                    const totalContacts = data.queues.reduce((sum, q) => sum + (q.contacts_in_queue || 0), 0);
+                    document.getElementById('total-contacts').textContent = totalContacts;
+                    
+                } else {
+                    console.error('❌ Refresh failed:', data.error);
+                    
+                    // Show error message
+                    document.getElementById('error-text').textContent = data.error;
+                    errorContainer.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('❌ Network error during refresh:', error);
+                
+                // Show error message
+                document.getElementById('error-text').textContent = 'Network error. Please try again.';
+                errorContainer.style.display = 'block';
+            })
+            .finally(() => {
+                // Re-enable refresh button and hide loading
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '🔄 Refresh Queues';
+                loadingIndicator.style.display = 'none';
+            });
+        }
+        
+        // Update queue table with new data
+        function updateQueueTable(queues) {
+            const tbody = document.getElementById('queue-tbody');
+            
+            // Clear existing rows
+            tbody.innerHTML = '';
+            
+            // Add new rows
+            queues.forEach(queue => {
+                const row = document.createElement('tr');
+                
+                // Determine row class based on call count
+                let rowClass = 'queue-row';
+                if (queue.contacts_in_queue > 10) {
+                    rowClass += ' high-volume';
+                } else if (queue.contacts_in_queue > 5) {
+                    rowClass += ' medium-volume';
+                }
+                row.className = rowClass;
+                
+                // Queue name cell
+                const nameCell = document.createElement('td');
+                nameCell.className = 'queue-name';
+                nameCell.textContent = queue.queue_name;
+                row.appendChild(nameCell);
+                
+                // Count cell
+                const countCell = document.createElement('td');
+                countCell.className = 'queue-count';
+                if (queue.error) {
+                    countCell.innerHTML = '<span class="error-indicator" title="' + queue.error + '">⚠️ Error</span>';
+                } else {
+                    countCell.innerHTML = '<span class="count-badge">' + queue.contacts_in_queue + '</span>';
+                }
+                row.appendChild(countCell);
+                
+                // Status cell
+                const statusCell = document.createElement('td');
+                statusCell.className = 'queue-status';
+                if (queue.error) {
+                    statusCell.innerHTML = '<span class="status-error" title="' + queue.error + '">❌ Failed</span>';
+                } else {
+                    statusCell.innerHTML = '<span class="status-ok">✅ Active</span>';
+                }
+                row.appendChild(statusCell);
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📊 Queue view initialized');
+            
+            // Detect mode for potential future enhancements
+            const modeDetector = new ModeDetector();
+            const modeInfo = modeDetector.detectMode();
+            console.log('Current mode:', modeInfo);
+        });
+    </script>
+</body>
+</html>

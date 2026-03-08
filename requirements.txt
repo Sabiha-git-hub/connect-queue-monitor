@@ -1,0 +1,26 @@
+# Python Dependencies for Amazon Connect Workshop App
+# This file lists all the external libraries (tools) our app needs
+
+# Flask - Web framework to build our web pages and handle HTTP requests
+Flask==3.0.0
+
+# Flask-CORS - Handles Cross-Origin Resource Sharing (needed for iframe embedding)
+Flask-CORS==4.0.0
+
+# boto3 - Amazon's official Python SDK to talk to AWS services like Amazon Connect
+boto3==1.34.0
+
+# python-dotenv - Loads configuration from .env file (keeps secrets safe)
+python-dotenv==1.0.0
+
+# pytest - Testing framework to make sure our code works correctly
+pytest==7.4.3
+
+# hypothesis - Property-based testing library for comprehensive test coverage
+hypothesis==6.92.0
+
+# pytest-cov - Measures how much of our code is tested
+pytest-cov==4.1.0
+
+# gunicorn - Production WSGI server for running Flask apps
+gunicorn==21.2.0

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Connect Queue Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    
+    <!-- Amazon Connect Streams API from CDN -->
+    <script src="https://d366s8lxuwna4d.cloudfront.net/amazon-connect-streams/amazon-connect-1.7.0.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Workshop Branding -->
+        <header class="app-header">
+            <h1>🎯 Amazon Connect Queue Monitor</h1>
+            <p class="subtitle">Workshop: Building Third-Party Apps for Amazon Connect</p>
+        </header>
+
+        <!-- Mode Indicator (will be populated by JavaScript) -->
+        <div id="mode-indicator" class="mode-badge" style="display: none;">
+            <span id="mode-text"></span>
+        </div>
+
+        <!-- Hidden CCP Container for Streams API -->
+        <!-- This container is used by the Streams API to initialize the connection -->
+        <!-- It remains hidden but is required for the API to function -->
+        <div id="ccp-container" style="display: none;"></div>
+
+        <!-- Login Form (shown only in standalone mode) -->
+        <div id="login-container" class="login-form">
+            <h2>Agent Login</h2>
+            <p class="instructions">Enter your Amazon Connect agent username to view your assigned queues.</p>
+            
+            <form id="login-form" action="/agent/login" method="POST">
+                <div class="form-group">
+                    <label for="username">Agent Username:</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Enter your username" 
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    View My Queues
+                </button>
+            </form>
+
+            <!-- Error Display Area -->
+            {% if error %}
+            <div class="error-message">
+                <strong>⚠️ Error:</strong> {{ error }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Loading Indicator (shown during automatic detection) -->
+        <div id="loading-container" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Detecting agent information...</p>
+        </div>
+
+        <!-- Instructions for Workshop Participants -->
+        <div class="workshop-info">
+            <h3>📚 About This Application</h3>
+            <p>
+                This application demonstrates how to build agent-focused web applications 
+                that can be embedded inside Amazon Connect's agent workspace.
+            </p>
+            <ul>
+                <li><strong>Embedded Mode:</strong> Automatically detects agent via Streams API</li>
+                <li><strong>Standalone Mode:</strong> Manual login for development and testing</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script src="{{ url_for('static', filename='js/mode-detector.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/streams.js') }}"></script>
+    <script>
+        // Initialize the application when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initializing Amazon Connect Queue Monitor...');
+            
+            // Step 1: Detect the mode (embedded vs standalone)
+            const modeDetector = new ModeDetector();
+            const modeInfo = modeDetector.detectMode();
+            
+            console.log('Mode detected:', modeInfo);
+            
+            // Update mode indicator
+            const modeIndicator = document.getElementById('mode-indicator');
+            const modeText = document.getElementById('mode-text');
+            
+            if (modeInfo.isEmbedded) {
+                modeText.textContent = '🔗 Embedded Mode (Amazon Connect)';
+                modeIndicator.classList.add('mode-embedded');
+            } else {
+                modeText.textContent = '💻 Standalone Mode (Development)';
+                modeIndicator.classList.add('mode-standalone');
+            }
+            modeIndicator.style.display = 'block';
+            
+            // Step 2: Handle manual login form submission
+            const loginForm = document.getElementById('login-form');
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault(); // Prevent default form submission
+                    
+                    const username = document.getElementById('username').value.trim();
+                    
+                    if (!username) {
+                        alert('Please enter your username');
+                        return;
+                    }
+                    
+                    // Disable submit button
+                    const submitBtn = loginForm.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '⏳ Logging in...';
+                    
+                    // Send JSON request to backend
+                    fetch('/agent/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username: username })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Redirect to queue view
+                            window.location.href = '/agent/queues';
+                        } else {
+                            // Show error
+                            alert('Error: ' + data.error);
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'View My Queues';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Login error:', error);
+                        alert('Login failed. Please try again.');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'View My Queues';
+                    });
+                });
+            }
+            
+            // Step 3: Initialize based on mode
+            if (modeInfo.isEmbedded && modeInfo.isAmazonConnect) {
+                // EMBEDDED MODE: Use Streams API for automatic detection
+                console.log('📡 Starting automatic agent detection via Streams API...');
+                
+                // Hide login form, show loading
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('loading-container').style.display = 'block';
+                
+                // Initialize Streams API
+                const ccpUrl = '{{ connect_instance_url }}/ccp-v2';
+                const streamsAPI = new StreamsAPIIntegration(ccpUrl, 'ccp-container');
+                
+                streamsAPI.initialize()
+                    .then(agentData => {
+                        console.log('✅ Agent detected:', agentData.username);
+                        
+                        // Send automatic login request to backend
+                        fetch('/agent/auto-login', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                username: agentData.username
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Redirect to queue view
+                                window.location.href = '/agent/queues';
+                            } else {
+                                // Show error
+                                document.getElementById('loading-container').style.display = 'none';
+                                document.getElementById('login-container').style.display = 'block';
+                                
+                                const errorDiv = document.createElement('div');
+                                errorDiv.className = 'error-message';
+                                errorDiv.innerHTML = '<strong>⚠️ Error:</strong> ' + data.error;
+                                document.getElementById('login-container').appendChild(errorDiv);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('❌ Auto-login failed:', error);
+                            document.getElementById('loading-container').style.display = 'none';
+                            document.getElementById('login-container').style.display = 'block';
+                            
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'error-message';
+                            errorDiv.innerHTML = '<strong>⚠️ Error:</strong> Automatic login failed. Please try manual login.';
+                            document.getElementById('login-container').appendChild(errorDiv);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('❌ Streams API initialization failed:', error);
+                        
+                        // Fallback to manual login
+                        document.getElementById('loading-container').style.display = 'none';
+                        document.getElementById('login-container').style.display = 'block';
+                        
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'error-message';
+                        errorDiv.innerHTML = '<strong>⚠️ Error:</strong> Automatic detection failed. Please use manual login below.';
+                        document.getElementById('login-container').appendChild(errorDiv);
+                    });
+                
+            } else {
+                // STANDALONE MODE: Show manual login form
+                console.log('📝 Standalone mode - showing manual login form');
+                document.getElementById('login-container').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
