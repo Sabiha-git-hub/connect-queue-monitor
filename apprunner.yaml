@@ -6,7 +6,7 @@ build:
       - pip install --upgrade pip
       - pip install -r requirements.txt
 run:
-  runtime-version: 3.11
+  runtime-version: 3.12
   command: gunicorn --bind :8080 --workers 2 --timeout 120 run:app
   network:
     port: 8080
