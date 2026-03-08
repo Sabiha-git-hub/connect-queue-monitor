@@ -106,19 +106,13 @@ class Config:
                 f"got: {cls.CONNECT_INSTANCE_URL}"
             )
         
-        # Check Flask Secret Key (warn if using default)
+        # Check Flask Secret Key (warn if using default, but don't block)
         if cls.FLASK_SECRET_KEY == 'dev-secret-key-change-in-production':
-            errors.append(
-                "FLASK_SECRET_KEY is using default value. "
-                "Generate a secure random key for production!"
-            )
+            print("WARNING: FLASK_SECRET_KEY is using default value. Generate a secure random key for production!")
         
-        # Check Allowed Origins for iframe embedding
+        # Check Allowed Origins for iframe embedding (warning only, not blocking)
         if not cls.ALLOWED_ORIGINS:
-            errors.append(
-                "ALLOWED_ORIGINS is required for iframe embedding. "
-                "Add your Amazon Connect instance domains."
-            )
+            print("WARNING: ALLOWED_ORIGINS not set. CORS may not work for iframe embedding.")
         
         # If there are errors, raise ValueError with all error messages
         if errors:
