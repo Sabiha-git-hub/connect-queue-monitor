@@ -7,20 +7,22 @@ This guide walks you through deploying the Connect Queue Monitor application to 
 
 ---
 
-## Table of Contents
+## 📋 Table of Contents
 
-1. [Prerequisites](#prerequisites)
-2. [Step 1: Set Up AWS Account](#step-1-set-up-aws-account)
-3. [Step 2: Create Amazon Connect Instance](#step-2-create-amazon-connect-instance)
-4. [Step 3: Configure IAM Permissions](#step-3-configure-iam-permissions)
-5. [Step 4: Set Up Local Development Environment](#step-4-set-up-local-development-environment)
-6. [Step 5: Configure Application](#step-5-configure-application)
-7. [Step 6: Test Locally](#step-6-test-locally)
-8. [Step 7: Deploy to Elastic Beanstalk](#step-7-deploy-to-elastic-beanstalk)
-9. [Step 8: Set Up CloudFront for HTTPS](#step-8-set-up-cloudfront-for-https)
-10. [Step 9: Add to Amazon Connect](#step-9-add-to-amazon-connect)
-11. [Step 10: Test End-to-End](#step-10-test-end-to-end)
-12. [Troubleshooting](#troubleshooting)
+**Click any step to jump directly to it:**
+
+1. [Prerequisites](#prerequisites) - Tools and accounts you need
+2. [Step 1: Set Up AWS Account](#step-1-set-up-aws-account) - Create AWS account and IAM user
+3. [Step 2: Create Amazon Connect Instance](#step-2-create-amazon-connect-instance) - Set up Connect instance and test agents
+4. [Step 3: Configure IAM Permissions](#step-3-configure-iam-permissions) - Set up permissions for the app
+5. [Step 4: Set Up Local Development Environment](#step-4-set-up-local-development-environment) - Clone repo and install dependencies
+6. [Step 5: Configure Application](#step-5-configure-application) - Set environment variables
+7. [Step 6: Test Locally](#step-6-test-locally) - Run and test on your computer
+8. [Step 7: Deploy to Elastic Beanstalk](#step-7-deploy-to-elastic-beanstalk) - Deploy to AWS
+9. [Step 8: Set Up CloudFront for HTTPS](#step-8-set-up-cloudfront-for-https) - Enable HTTPS access
+10. [Step 9: Add to Amazon Connect](#step-9-add-to-amazon-connect) - Integrate with agent workspace
+11. [Step 10: Test End-to-End](#step-10-test-end-to-end) - Verify everything works
+12. [Troubleshooting](#troubleshooting) - Common issues and solutions
 
 ---
 
