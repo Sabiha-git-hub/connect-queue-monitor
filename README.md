@@ -55,7 +55,12 @@ A Flask-based web application that displays real-time queue metrics and agent pe
 
 ### Production Deployment
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions to AWS Elastic Beanstalk with CloudFront.
+**New to this project?** Start here:
+- **[DEPLOYMENT_FROM_SCRATCH.md](DEPLOYMENT_FROM_SCRATCH.md)** - Complete step-by-step guide for deploying to a new AWS account and Connect instance (2-3 hours)
+- **[QUICK_DEPLOYMENT_CHECKLIST.md](QUICK_DEPLOYMENT_CHECKLIST.md)** - Quick reference checklist for experienced users
+
+**Already familiar?** See:
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Detailed deployment documentation
 
 ## Documentation
 
