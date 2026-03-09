@@ -82,22 +82,33 @@ class SecurityConfig:
             - SameSite=None: Allows cookies to be sent in cross-site contexts (iframes)
             - SESSION_COOKIE_SECURE=True: Requires HTTPS (browsers require this with SameSite=None)
             - SESSION_COOKIE_SAMESITE='None': Must be the string 'None', not Python None
-            - In development (HTTP), we use Lax instead of None to allow cookies to work
+            - When behind CloudFront (HTTPS), always use SameSite=None
+            - CloudFront forwards X-Forwarded-Proto header to indicate HTTPS
         """
         from config.settings import Config
+        import os
         
+        # Check if we're behind a proxy (CloudFront) using HTTPS
+        # CloudFront sets X-Forwarded-Proto to 'https'
+        # For Elastic Beanstalk behind CloudFront, we should always use SameSite=None
+        
+        # In production (behind CloudFront), always use None for iframe embedding
+        # In development (local), use Lax for easier testing
         if Config.FLASK_DEBUG:
-            # Development mode (HTTP) - use Lax for local testing
+            # Development mode - use Lax for local testing
             app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
             app.config['SESSION_COOKIE_SECURE'] = False
         else:
-            # Production mode (HTTPS) - use None for iframe embedding
+            # Production mode (behind CloudFront HTTPS) - use None for iframe embedding
             app.config['SESSION_COOKIE_SAMESITE'] = 'None'
             app.config['SESSION_COOKIE_SECURE'] = True
         
         # Make session cookies accessible only via HTTP (not JavaScript)
         # This adds extra security against XSS attacks
         app.config['SESSION_COOKIE_HTTPONLY'] = True
+        
+        # Set cookie domain to None to allow cookies to work across CloudFront and Elastic Beanstalk
+        app.config['SESSION_COOKIE_DOMAIN'] = None
 
 
 def create_app():
@@ -137,6 +148,10 @@ def create_app():
     
     # Get allowed origins from configuration
     allowed_origins = Config.get_allowed_origins()
+    
+    # Always add Amazon Connect domain for iframe embedding
+    if Config.CONNECT_INSTANCE_URL:
+        allowed_origins.append(Config.CONNECT_INSTANCE_URL)
     
     # In development mode, add localhost to allowed origins
     if Config.FLASK_DEBUG:
@@ -178,7 +193,9 @@ def create_app():
         """
         
         # Content-Security-Policy: Controls iframe embedding
-        csp_header = SecurityConfig.get_csp_header(allowed_origins)
+        # CSP supports wildcards, so we can use *.my.connect.aws and *.awsapps.com
+        csp_origins = allowed_origins + ['https://*.my.connect.aws', 'https://*.awsapps.com']
+        csp_header = SecurityConfig.get_csp_header(csp_origins)
         response.headers['Content-Security-Policy'] = csp_header
         
         # X-Frame-Options: In development, allow same origin; in production, same origin only
@@ -193,6 +210,17 @@ def create_app():
         # This header tells ngrok to skip the warning page when the app is loaded in an iframe
         # Required for free ngrok accounts when embedding in Amazon Connect
         response.headers['ngrok-skip-browser-warning'] = 'true'
+        
+        # Add Partitioned attribute to Set-Cookie header for better third-party cookie support
+        # This helps with incognito mode and cross-site cookie restrictions
+        if 'Set-Cookie' in response.headers:
+            cookies = response.headers.getlist('Set-Cookie')
+            response.headers.remove('Set-Cookie')
+            for cookie in cookies:
+                # Add Partitioned attribute if not already present and if SameSite=None
+                if 'SameSite=None' in cookie and 'Partitioned' not in cookie:
+                    cookie = cookie + '; Partitioned'
+                response.headers.add('Set-Cookie', cookie)
         
         return response
     

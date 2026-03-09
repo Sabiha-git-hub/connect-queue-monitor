@@ -36,15 +36,21 @@ def register_routes(app):
     @app.route('/agent/login', methods=['POST'])
     def agent_login():
         """Handle manual agent login from form submission."""
-        logger.info("Manual agent login attempt")
+        logger.info("=" * 50)
+        logger.info("MANUAL AGENT LOGIN ATTEMPT")
+        logger.info(f"Request method: {request.method}")
+        logger.info(f"Request content type: {request.content_type}")
+        logger.info(f"Request is_json: {request.is_json}")
         
         try:
             # Get username from request (support both JSON and form data)
             if request.is_json:
                 data = request.get_json()
                 username = data.get('username', '').strip()
+                logger.info(f"Received JSON data: {data}")
             else:
                 username = request.form.get('username', '').strip()
+                logger.info(f"Received form data: {dict(request.form)}")
             
             if not username:
                 logger.warning("Login attempt with empty username")
@@ -63,11 +69,15 @@ def register_routes(app):
             
             # Store in session
             session['agent_username'] = agent.username
+            session['agent_id'] = agent.user_id  # Store agent ID for metrics
             session['detection_mode'] = 'manual'
             session['queue_ids'] = agent.assigned_queue_ids
             session['routing_profile_name'] = agent.routing_profile_name
             
             logger.info(f"✓ Agent logged in successfully: {username}")
+            logger.info(f"Session data: agent_username={session.get('agent_username')}, detection_mode={session.get('detection_mode')}")
+            logger.info(f"Session cookie config: SameSite={app.config.get('SESSION_COOKIE_SAMESITE')}, Secure={app.config.get('SESSION_COOKIE_SECURE')}")
+            logger.info("=" * 50)
             
             # Return success response
             return jsonify({
@@ -128,6 +138,7 @@ def register_routes(app):
             
             # Store in session
             session['agent_username'] = agent.username
+            session['agent_id'] = agent.user_id  # Store agent ID for metrics
             session['detection_mode'] = 'automatic'
             session['queue_ids'] = agent.assigned_queue_ids
             session['routing_profile_name'] = agent.routing_profile_name
@@ -172,24 +183,37 @@ def register_routes(app):
     @app.route('/agent/queues')
     def queue_view():
         """Display agent's queue view with call counts."""
-        logger.info("Queue view page accessed")
+        logger.info("=" * 50)
+        logger.info("QUEUE VIEW PAGE ACCESSED")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info(f"Request cookies: {dict(request.cookies)}")
+        logger.info(f"Session data: {dict(session)}")
+        logger.info(f"Agent username in session: {session.get('agent_username')}")
+        logger.info(f"Session cookie name: {app.config.get('SESSION_COOKIE_NAME', 'session')}")
         
         # Check if agent is logged in
         if 'agent_username' not in session:
-            logger.warning("Queue view accessed without login")
+            logger.warning("Queue view accessed without login - redirecting to index")
+            logger.warning(f"Session is empty or missing agent_username")
+            logger.warning(f"Available cookies: {list(request.cookies.keys())}")
+            logger.info("=" * 50)
             return redirect(url_for('index'))
         
         username = session['agent_username']
         detection_mode = session.get('detection_mode', 'manual')
         queue_ids = session.get('queue_ids', [])
         routing_profile_name = session.get('routing_profile_name', 'Unknown')
+        agent_id = session.get('agent_id')  # Get agent_id from session
         
-        logger.info(f"Loading queue view for agent: {username}")
+        logger.info(f"Loading queue view for agent: {username} (ID: {agent_id})")
         
         try:
-            # Get queue metrics
+            # Get queue metrics with agent-specific data
             queue_service = create_queue_service()
-            queue_metrics = queue_service.get_queue_metrics(queue_ids)
+            queue_metrics = queue_service.get_queue_metrics(queue_ids, agent_id=agent_id)
+            
+            # Get agent performance summary
+            agent_performance = queue_service.get_agent_performance_summary(agent_id)
             
             logger.info(f"✓ Retrieved metrics for {len(queue_metrics)} queue(s)")
             
@@ -200,7 +224,8 @@ def register_routes(app):
                 detection_mode=detection_mode,
                 routing_profile=routing_profile_name,
                 queues=queue_metrics,
-                total_contacts=sum(q.contacts_in_queue for q in queue_metrics if not q.error)
+                total_contacts=sum(q.contacts_in_queue for q in queue_metrics if not q.error),
+                agent_performance=agent_performance
             )
             
         except Exception as e:
@@ -232,13 +257,17 @@ def register_routes(app):
         
         username = session['agent_username']
         queue_ids = session.get('queue_ids', [])
+        agent_id = session.get('agent_id')
         
-        logger.info(f"Refreshing queues for agent: {username}")
+        logger.info(f"Refreshing queues for agent: {username} (ID: {agent_id})")
         
         try:
-            # Get updated queue metrics
+            # Get updated queue metrics with agent-specific data
             queue_service = create_queue_service()
-            queue_metrics = queue_service.get_queue_metrics(queue_ids)
+            queue_metrics = queue_service.get_queue_metrics(queue_ids, agent_id=agent_id)
+            
+            # Get agent performance summary
+            agent_performance = queue_service.get_agent_performance_summary(agent_id)
             
             logger.info(f"✓ Refreshed metrics for {len(queue_metrics)} queue(s)")
             
@@ -248,6 +277,10 @@ def register_routes(app):
                     'queue_id': q.queue_id,
                     'queue_name': q.queue_name,
                     'contacts_in_queue': q.contacts_in_queue,
+                    'calls_handled': q.calls_handled,
+                    'calls_transferred_out': q.calls_transferred_out,
+                    'available_agents': q.available_agents,
+                    'non_productive_agents': q.non_productive_agents,
                     'error': q.error
                 }
                 for q in queue_metrics
@@ -255,7 +288,8 @@ def register_routes(app):
             
             return jsonify({
                 'success': True,
-                'queues': queues_data
+                'queues': queues_data,
+                'agent_performance': agent_performance
             })
             
         except Exception as e:
@@ -266,7 +300,7 @@ def register_routes(app):
             }), 500
     
     
-    @app.route('/agent/logout', methods=['POST'])
+    @app.route('/agent/logout', methods=['GET', 'POST'])
     def agent_logout():
         """Log out the agent and clear session."""
         username = session.get('agent_username', 'Unknown')
@@ -277,6 +311,27 @@ def register_routes(app):
         
         logger.info("✓ Session cleared")
         
+        # If it's a GET request (link click), redirect to home
+        if request.method == 'GET':
+            return redirect(url_for('index'))
+        
+        # If it's a POST request (AJAX), return JSON
         return jsonify({
             'success': True
+        })
+    
+    
+    @app.route('/debug/session')
+    def debug_session():
+        """Debug endpoint to check session and cookie status."""
+        return jsonify({
+            'session_data': dict(session),
+            'cookies': dict(request.cookies),
+            'headers': dict(request.headers),
+            'session_cookie_name': app.config.get('SESSION_COOKIE_NAME', 'session'),
+            'session_cookie_config': {
+                'samesite': app.config.get('SESSION_COOKIE_SAMESITE'),
+                'secure': app.config.get('SESSION_COOKIE_SECURE'),
+                'httponly': app.config.get('SESSION_COOKIE_HTTPONLY')
+            }
         })

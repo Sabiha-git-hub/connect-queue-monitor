@@ -413,7 +413,7 @@ class ConnectClient:
             logger.error(f"Boto core error: {e}")
             raise ConnectAPIException(f"AWS SDK error: {e}")
     
-    def get_current_metric_data(self, queue_ids: List[str]) -> Dict:
+    def get_current_metric_data(self, queue_ids: List[str], metrics: Optional[List[Dict]] = None, groupings: Optional[List[str]] = None) -> Dict:
         """
         Get current metrics (real-time data) for queues.
         
@@ -425,6 +425,8 @@ class ConnectClient:
         
         Args:
             queue_ids: List of queue IDs to get metrics for
+            metrics: Optional list of metric definitions. Defaults to CONTACTS_IN_QUEUE
+            groupings: Optional list of grouping dimensions. Defaults to ['QUEUE']
         
         Returns:
             Dictionary with metric data:
@@ -447,14 +449,16 @@ class ConnectClient:
         logger.info(f"Getting current metrics for {len(queue_ids)} queue(s)")
         
         try:
-            # Define which metrics we want
-            # CONTACTS_IN_QUEUE = number of contacts waiting in queue
-            current_metrics = [
-                {
-                    'Name': 'CONTACTS_IN_QUEUE',
-                    'Unit': 'COUNT'
-                }
-            ]
+            # Define which metrics we want (default to CONTACTS_IN_QUEUE)
+            if metrics is None:
+                current_metrics = [
+                    {
+                        'Name': 'CONTACTS_IN_QUEUE',
+                        'Unit': 'COUNT'
+                    }
+                ]
+            else:
+                current_metrics = metrics
             
             # Build filters for the queues we want
             filters = {
@@ -463,7 +467,8 @@ class ConnectClient:
             }
             
             # Add groupings to ensure we get queue IDs in the response
-            groupings = ['QUEUE']
+            if groupings is None:
+                groupings = ['QUEUE']
             
             # Make API call
             response = self.client.get_current_metric_data(
@@ -491,6 +496,108 @@ class ConnectClient:
                 raise RateLimitException("API rate limit exceeded. Please retry later.")
             else:
                 raise ConnectAPIException(f"Error getting current metrics: {error_message}")
+        
+        except BotoCoreError as e:
+            logger.error(f"Boto core error: {e}")
+            raise ConnectAPIException(f"AWS SDK error: {e}")
+    
+    def get_metric_data_v2(self, start_time: str, end_time: str, filters: List[Dict], metrics: List[Dict], groupings: Optional[List[str]] = None) -> Dict:
+        """
+        Get historical metrics using GetMetricDataV2 API.
+        
+        This retrieves historical metrics for agents and queues over a time period.
+        
+        API Call: connect.get_metric_data_v2()
+        Documentation: https://docs.aws.amazon.com/connect/latest/APIReference/API_GetMetricDataV2.html
+        
+        Args:
+            start_time: Start time in ISO 8601 format (e.g., '2024-01-01T00:00:00Z')
+            end_time: End time in ISO 8601 format
+            filters: List of filter dictionaries (e.g., [{'FilterKey': 'QUEUE', 'FilterValues': ['queue-id']}])
+            metrics: List of metric definitions (e.g., [{'Name': 'CONTACTS_HANDLED'}])
+            groupings: Optional list of grouping dimensions
+        
+        Returns:
+            Dictionary with metric data:
+            - MetricResults: List of results with metrics
+            - NextToken: Pagination token if more results available
+        
+        Raises:
+            ConnectAPIException: If API call fails
+        
+        Example:
+            filters = [
+                {'FilterKey': 'QUEUE', 'FilterValues': ['queue-123']},
+                {'FilterKey': 'AGENT', 'FilterValues': ['agent-456']}
+            ]
+            metrics = [{'Name': 'CONTACTS_HANDLED', 'Threshold': [{'Comparison': 'LT', 'ThresholdValue': 100}]}]
+            
+            response = client.get_metric_data_v2(
+                start_time='2024-01-01T00:00:00Z',
+                end_time='2024-01-02T00:00:00Z',
+                filters=filters,
+                metrics=metrics
+            )
+        """
+        logger.info(f"Getting historical metrics from {start_time} to {end_time}")
+        logger.info(f"DEBUG: Instance ID: {self.instance_id}")
+        logger.info(f"DEBUG: Region: {self.region_name}")
+        
+        try:
+            # Build ResourceArn - need to extract account ID from instance ID or construct properly
+            # Instance ID format: UUID or arn:aws:connect:region:account-id:instance/instance-id
+            if self.instance_id.startswith('arn:'):
+                # Already an ARN, extract the base
+                resource_arn = self.instance_id
+            else:
+                # Need to construct ARN - but we need account ID
+                # Try to get it from STS
+                try:
+                    sts_client = boto3.client('sts', region_name=self.region_name)
+                    account_id = sts_client.get_caller_identity()['Account']
+                    resource_arn = f'arn:aws:connect:{self.region_name}:{account_id}:instance/{self.instance_id}'
+                except Exception as e:
+                    logger.error(f"Failed to get account ID from STS: {e}")
+                    # Fallback: try to construct without account ID (may fail)
+                    resource_arn = f'arn:aws:connect:{self.region_name}::instance/{self.instance_id}'
+            
+            logger.info(f"DEBUG: ResourceArn: {resource_arn}")
+            
+            # Build request parameters
+            params = {
+                'ResourceArn': resource_arn,
+                'StartTime': start_time,
+                'EndTime': end_time,
+                'Filters': filters,
+                'Metrics': metrics
+            }
+            
+            if groupings:
+                params['Groupings'] = groupings
+            
+            logger.info(f"DEBUG: API params: {params}")
+            
+            # Make API call
+            response = self.client.get_metric_data_v2(**params)
+            
+            logger.info(f"✓ Retrieved {len(response.get('MetricResults', []))} metric result(s)")
+            
+            return response
+            
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            error_message = e.response['Error']['Message']
+            
+            logger.error(f"AWS API error getting metric data v2: {error_code} - {error_message}")
+            
+            if error_code == 'ResourceNotFoundException':
+                raise ConnectAPIException(f"Resource not found")
+            elif error_code == 'AccessDeniedException':
+                raise AuthenticationException("Access denied. Check IAM permissions.")
+            elif error_code == 'ThrottlingException':
+                raise RateLimitException("API rate limit exceeded. Please retry later.")
+            else:
+                raise ConnectAPIException(f"Error getting metric data v2: {error_message}")
         
         except BotoCoreError as e:
             logger.error(f"Boto core error: {e}")

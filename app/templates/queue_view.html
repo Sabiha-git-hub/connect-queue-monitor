@@ -13,20 +13,60 @@
     <div class="container">
         <!-- Header with Agent Info -->
         <header class="app-header">
-            <h1>📊 My Queue Dashboard</h1>
-            <div class="agent-info">
-                <span class="agent-username">👤 {{ agent_username }}</span>
-                {% if detection_mode %}
-                <span class="detection-mode-badge mode-{{ detection_mode }}">
-                    {% if detection_mode == 'automatic' %}
-                        🔗 Auto-Detected
-                    {% else %}
-                        💻 Manual Login
+            <img src="{{ url_for('static', filename='images/logo.png') }}" 
+                 alt="Company Logo" 
+                 class="logo"
+                 onerror="this.style.display='none'">
+            <div class="header-content">
+                <h1>My Queue Dashboard</h1>
+                <div class="agent-info">
+                    <span class="agent-username">👤 {{ agent_username }}</span>
+                    {% if detection_mode %}
+                    <span class="detection-mode-badge mode-{{ detection_mode }}">
+                        {% if detection_mode == 'automatic' %}
+                            🔗 Auto-Detected
+                        {% else %}
+                            💻 Manual Login
+                        {% endif %}
+                    </span>
                     {% endif %}
-                </span>
-                {% endif %}
+                </div>
             </div>
         </header>
+
+        <!-- Personal Performance Summary Card -->
+        <div class="performance-summary">
+            <h2>📊 My Performance Today</h2>
+            <div class="performance-cards">
+                <div class="perf-card">
+                    <div class="perf-icon">📞</div>
+                    <div class="perf-content">
+                        <div class="perf-value" id="perf-calls-handled">{{ agent_performance.calls_handled if agent_performance else 0 }}</div>
+                        <div class="perf-label">Calls Handled</div>
+                    </div>
+                </div>
+                <div class="perf-card">
+                    <div class="perf-icon">⏱️</div>
+                    <div class="perf-content">
+                        <div class="perf-value" id="perf-avg-handle-time">
+                            {% if agent_performance and agent_performance.average_handle_time > 0 %}
+                                {{ '%d:%02d' | format((agent_performance.average_handle_time // 60)|int, (agent_performance.average_handle_time % 60)|int) }}
+                            {% else %}
+                                0:00
+                            {% endif %}
+                        </div>
+                        <div class="perf-label">Avg Handle Time</div>
+                    </div>
+                </div>
+                <div class="perf-card">
+                    <div class="perf-icon">↗️</div>
+                    <div class="perf-content">
+                        <div class="perf-value" id="perf-transfers">{{ agent_performance.calls_transferred if agent_performance else 0 }}</div>
+                        <div class="perf-label">Calls Transferred</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Hidden CCP Container for Streams API (embedded mode) -->
         <div id="ccp-container" style="display: none;"></div>
@@ -67,38 +107,80 @@
             </p>
 
             {% if queues %}
-            <table class="queue-table" id="queue-table">
-                <thead>
-                    <tr>
-                        <th>Queue Name</th>
-                        <th>Contacts in Queue</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="queue-tbody">
-                    {% for queue in queues %}
-                    <tr class="queue-row {% if queue.contacts_in_queue > 10 %}high-volume{% elif queue.contacts_in_queue > 5 %}medium-volume{% endif %}">
-                        <td class="queue-name">
-                            {{ queue.queue_name }}
-                        </td>
-                        <td class="queue-count">
-                            {% if queue.error %}
-                                <span class="error-indicator" title="{{ queue.error }}">⚠️ Error</span>
-                            {% else %}
-                                <span class="count-badge">{{ queue.contacts_in_queue }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="queue-status">
-                            {% if queue.error %}
-                                <span class="status-error" title="{{ queue.error }}">❌ Failed</span>
-                            {% else %}
-                                <span class="status-ok">✅ Active</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table class="queue-table" id="queue-table">
+                    <thead>
+                        <tr>
+                            <th>Queue Name</th>
+                            <th>Contacts in Queue</th>
+                            <th>Calls Handled</th>
+                            <th>Calls Transferred</th>
+                            <th>Available Agents</th>
+                            <th>Non-Productive</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queue-tbody">
+                        {% for queue in queues %}
+                        <tr class="queue-row {% if queue.contacts_in_queue > 10 %}high-volume{% elif queue.contacts_in_queue > 5 %}medium-volume{% endif %}">
+                            <td class="queue-name">
+                                {{ queue.queue_name }}
+                            </td>
+                            <td class="queue-count">
+                                {% if queue.error %}
+                                    <span class="error-indicator" title="{{ queue.error }}">⚠️ Error</span>
+                                {% else %}
+                                    <span class="count-badge">{{ queue.contacts_in_queue }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="metric-cell">
+                                {% if not queue.error %}
+                                    <span class="metric-badge metric-success">
+                                        {{ queue.calls_handled }}
+                                    </span>
+                                {% else %}
+                                    <span class="metric-na">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="metric-cell">
+                                {% if not queue.error %}
+                                    <span class="metric-badge">
+                                        {{ queue.calls_transferred_out }}
+                                    </span>
+                                {% else %}
+                                    <span class="metric-na">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="metric-cell">
+                                {% if not queue.error %}
+                                    <span class="metric-badge metric-info">
+                                        {{ queue.available_agents }}
+                                    </span>
+                                {% else %}
+                                    <span class="metric-na">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="metric-cell">
+                                {% if not queue.error %}
+                                    <span class="metric-badge {% if queue.non_productive_agents > 0 %}metric-neutral{% endif %}">
+                                        {{ queue.non_productive_agents }}
+                                    </span>
+                                {% else %}
+                                    <span class="metric-na">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="queue-status">
+                                {% if queue.error %}
+                                    <span class="status-error" title="{{ queue.error }}">❌ Failed</span>
+                                {% else %}
+                                    <span class="status-ok">✅ Active</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
 
             <!-- Queue Summary -->
             <div class="queue-summary">
@@ -115,15 +197,6 @@
             {% endif %}
         </div>
 
-        <!-- Workshop Info -->
-        <div class="workshop-info">
-            <h3>💡 How This Works</h3>
-            <ul>
-                <li><strong>Automatic Refresh:</strong> Click the refresh button to get latest queue metrics</li>
-                <li><strong>Color Coding:</strong> Busier queues are highlighted for quick identification</li>
-                <li><strong>Real-time Data:</strong> Metrics are fetched directly from Amazon Connect APIs</li>
-            </ul>
-        </div>
     </div>
 
     <!-- JavaScript for Dynamic Refresh -->
@@ -166,6 +239,11 @@
                     // Update total contacts
                     const totalContacts = data.queues.reduce((sum, q) => sum + (q.contacts_in_queue || 0), 0);
                     document.getElementById('total-contacts').textContent = totalContacts;
+                    
+                    // Update agent performance summary
+                    if (data.agent_performance) {
+                        updatePerformanceSummary(data.agent_performance);
+                    }
                     
                 } else {
                     console.error('❌ Refresh failed:', data.error);
@@ -216,7 +294,7 @@
                 nameCell.textContent = queue.queue_name;
                 row.appendChild(nameCell);
                 
-                // Count cell
+                // Contacts in queue cell
                 const countCell = document.createElement('td');
                 countCell.className = 'queue-count';
                 if (queue.error) {
@@ -225,6 +303,47 @@
                     countCell.innerHTML = '<span class="count-badge">' + queue.contacts_in_queue + '</span>';
                 }
                 row.appendChild(countCell);
+                
+                // Calls handled cell
+                const handledCell = document.createElement('td');
+                handledCell.className = 'metric-cell';
+                if (!queue.error) {
+                    handledCell.innerHTML = '<span class="metric-badge metric-success">' + queue.calls_handled + '</span>';
+                } else {
+                    handledCell.innerHTML = '<span class="metric-na">—</span>';
+                }
+                row.appendChild(handledCell);
+                
+                // Calls transferred cell
+                const transferredCell = document.createElement('td');
+                transferredCell.className = 'metric-cell';
+                if (!queue.error) {
+                    transferredCell.innerHTML = '<span class="metric-badge">' + queue.calls_transferred_out + '</span>';
+                } else {
+                    transferredCell.innerHTML = '<span class="metric-na">—</span>';
+                }
+                row.appendChild(transferredCell);
+                
+                // Available agents cell
+                const availableCell = document.createElement('td');
+                availableCell.className = 'metric-cell';
+                if (!queue.error) {
+                    availableCell.innerHTML = '<span class="metric-badge metric-info">' + queue.available_agents + '</span>';
+                } else {
+                    availableCell.innerHTML = '<span class="metric-na">—</span>';
+                }
+                row.appendChild(availableCell);
+                
+                // Non-productive agents cell
+                const nonProdCell = document.createElement('td');
+                nonProdCell.className = 'metric-cell';
+                if (!queue.error) {
+                    const nonProdClass = queue.non_productive_agents > 0 ? 'metric-badge metric-neutral' : 'metric-badge';
+                    nonProdCell.innerHTML = '<span class="' + nonProdClass + '">' + queue.non_productive_agents + '</span>';
+                } else {
+                    nonProdCell.innerHTML = '<span class="metric-na">—</span>';
+                }
+                row.appendChild(nonProdCell);
                 
                 // Status cell
                 const statusCell = document.createElement('td');
@@ -240,6 +359,66 @@
             });
         }
         
+        // Update performance summary with new data
+        function updatePerformanceSummary(agentPerformance) {
+            console.log('📊 Updating performance summary:', agentPerformance);
+            
+            // Update calls handled
+            const callsHandledEl = document.getElementById('perf-calls-handled');
+            if (callsHandledEl) {
+                callsHandledEl.textContent = agentPerformance.calls_handled || 0;
+            }
+            
+            // Update average handle time (format as MM:SS)
+            const avgHandleTimeEl = document.getElementById('perf-avg-handle-time');
+            if (avgHandleTimeEl) {
+                const avgTime = agentPerformance.average_handle_time || 0;
+                if (avgTime > 0) {
+                    const minutes = Math.floor(avgTime / 60);
+                    const seconds = Math.floor(avgTime % 60);
+                    avgHandleTimeEl.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                } else {
+                    avgHandleTimeEl.textContent = '0:00';
+                }
+            }
+            
+            // Update calls transferred
+            const transfersEl = document.getElementById('perf-transfers');
+            if (transfersEl) {
+                transfersEl.textContent = agentPerformance.calls_transferred || 0;
+            }
+            
+            console.log('✓ Performance summary updated');
+        }
+        
+        // Auto-refresh timer
+        let autoRefreshTimer = null;
+        
+        // Start auto-refresh (15 seconds)
+        function startAutoRefresh() {
+            console.log('🔄 Starting auto-refresh (every 15 seconds)');
+            
+            // Clear any existing timer
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+            }
+            
+            // Set up new timer - refresh every 15 seconds
+            autoRefreshTimer = setInterval(function() {
+                console.log('⏰ Auto-refresh triggered');
+                refreshQueues();
+            }, 15000); // 15 seconds = 15000 milliseconds
+        }
+        
+        // Stop auto-refresh
+        function stopAutoRefresh() {
+            if (autoRefreshTimer) {
+                console.log('⏸️ Stopping auto-refresh');
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+            }
+        }
+        
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📊 Queue view initialized');
@@ -248,6 +427,22 @@
             const modeDetector = new ModeDetector();
             const modeInfo = modeDetector.detectMode();
             console.log('Current mode:', modeInfo);
+            
+            // Start auto-refresh when page loads
+            startAutoRefresh();
+            
+            // Stop auto-refresh when page is hidden (user switches tabs)
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    console.log('👁️ Page hidden - pausing auto-refresh');
+                    stopAutoRefresh();
+                } else {
+                    console.log('👁️ Page visible - resuming auto-refresh');
+                    startAutoRefresh();
+                    // Refresh immediately when coming back
+                    refreshQueues();
+                }
+            });
         });
     </script>
 </body>

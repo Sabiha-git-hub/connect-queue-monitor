@@ -83,12 +83,16 @@ def main():
     logger.info("=" * 60)
     
     # Start Flask development server
+    # Use PORT environment variable for Elastic Beanstalk, default to 8080 for local dev
+    import os
+    port = int(os.environ.get('PORT', 8080))
+    
     try:
         app.run(
             host='0.0.0.0',  # Listen on all interfaces
-            port=8080,        # Using port 8080 (port 5000 often used by AirPlay on macOS)
-            debug=True,  # Enable debug mode for development
-            use_reloader=True  # Auto-reload on code changes
+            port=port,        # Use PORT from environment or 8080 for local dev
+            debug=False,  # Disable debug mode in production
+            use_reloader=False  # Disable auto-reload in production
         )
     except KeyboardInterrupt:
         logger.info("\n👋 Application stopped by user")

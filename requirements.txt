@@ -13,6 +13,9 @@ boto3==1.34.0
 # python-dotenv - Loads configuration from .env file (keeps secrets safe)
 python-dotenv==1.0.0
 
+# pytz - Timezone handling for EST/UTC conversions
+pytz==2024.1
+
 # pytest - Testing framework to make sure our code works correctly
 pytest==7.4.3
 

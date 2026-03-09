@@ -10,28 +10,39 @@
    CSS Variables for Easy Theming
    ======================================== */
 :root {
-    /* Colors */
-    --primary-color: #232f3e;
-    --secondary-color: #ff9900;
-    --success-color: #2ecc71;
-    --warning-color: #f39c12;
-    --error-color: #e74c3c;
-    --info-color: #3498db;
+    /* Brand Colors - Derived from logo primary color #0c072d */
+    --brand-primary: #0c072d;      /* Deep navy - headers, primary elements */
+    --brand-secondary: #1a1450;    /* Lighter navy - hover states */
+    --brand-accent: #4a3f8f;       /* Purple accent - highlights */
     
-    /* Backgrounds */
+    /* Functional Colors */
+    --success-color: #10b981;      /* Green - positive metrics */
+    --warning-color: #f59e0b;      /* Amber - medium priority */
+    --error-color: #ef4444;        /* Red - high priority/errors */
+    --info-color: #3b82f6;         /* Blue - informational */
+    
+    /* Neutral Colors */
     --bg-primary: #ffffff;
-    --bg-secondary: #f8f9fa;
-    --bg-dark: #232f3e;
-    
-    /* Text */
-    --text-primary: #333333;
-    --text-secondary: #666666;
-    --text-light: #999999;
+    --bg-secondary: #f9fafb;
+    --bg-tertiary: #f3f4f6;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-tertiary: #9ca3af;
     --text-white: #ffffff;
+    --border-color: #e5e7eb;
     
-    /* Borders */
-    --border-color: #dee2e6;
-    --border-radius: 8px;
+    /* Metric Badge Colors - Brand-derived with WCAG AA compliance */
+    --badge-high: #fef2f2;         /* Light red background */
+    --badge-high-text: #991b1b;    /* Dark red text - 7.8:1 contrast */
+    --badge-medium: #fffbeb;       /* Light amber background */
+    --badge-medium-text: #92400e;  /* Dark amber text - 7.5:1 contrast */
+    --badge-low: #f0fdf4;          /* Light green background */
+    --badge-low-text: #166534;     /* Dark green text - 8.2:1 contrast */
+    
+    /* Legacy compatibility */
+    --primary-color: #0c072d;
+    --secondary-color: #4a3f8f;
+    --bg-dark: #0c072d;
     
     /* Spacing */
     --spacing-xs: 4px;
@@ -39,6 +50,11 @@
     --spacing-md: 16px;
     --spacing-lg: 24px;
     --spacing-xl: 32px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* Borders */
+    --border-radius: 8px;
     
     /* Shadows */
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -63,6 +79,11 @@ body {
     background-color: var(--bg-secondary);
 }
 
+h1, h2, h3, h4, h5, h6 {
+    color: var(--brand-primary);
+    font-weight: 700;
+}
+
 /* ========================================
    Container & Layout
    ======================================== */
@@ -83,18 +104,35 @@ body {
    Header Styles
    ======================================== */
 .app-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #3a4a5e 100%);
+    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
     color: var(--text-white);
     padding: var(--spacing-lg);
     border-radius: var(--border-radius);
     margin-bottom: var(--spacing-lg);
     box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.app-header .logo {
+    height: 40px;
+    width: auto;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.app-header .header-content {
+    flex: 1;
+    min-width: 200px;
 }
 
 .app-header h1 {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: var(--spacing-sm);
+    color: var(--text-white);
 }
 
 .app-header .subtitle {
@@ -168,7 +206,7 @@ body {
 }
 
 .login-form h2 {
-    color: var(--primary-color);
+    color: var(--brand-primary);
     margin-bottom: var(--spacing-md);
     font-size: 1.75rem;
 }
@@ -200,8 +238,8 @@ body {
 
 .form-group input[type="text"]:focus {
     outline: none;
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.1);
+    border-color: var(--brand-accent);
+    box-shadow: 0 0 0 3px rgba(74, 63, 143, 0.1);
 }
 
 /* ========================================
@@ -221,12 +259,12 @@ body {
 }
 
 .btn-primary {
-    background-color: var(--secondary-color);
+    background-color: var(--brand-accent);
     color: var(--text-white);
 }
 
 .btn-primary:hover:not(:disabled) {
-    background-color: #e68a00;
+    background-color: var(--brand-secondary);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
@@ -276,7 +314,7 @@ body {
 }
 
 .queue-container h2 {
-    color: var(--primary-color);
+    color: var(--brand-primary);
     margin-bottom: var(--spacing-sm);
     font-size: 1.5rem;
 }
@@ -286,14 +324,21 @@ body {
     margin-bottom: var(--spacing-lg);
 }
 
-.queue-table {
-    width: 100%;
-    border-collapse: collapse;
+/* Table wrapper for horizontal scroll on narrow screens */
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     margin-bottom: var(--spacing-lg);
 }
 
+.queue-table {
+    width: 100%;
+    min-width: 900px; /* Minimum width to prevent cramping */
+    border-collapse: collapse;
+}
+
 .queue-table thead {
-    background-color: var(--bg-dark);
+    background-color: var(--brand-primary);
     color: var(--text-white);
 }
 
@@ -304,6 +349,7 @@ body {
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
 .queue-table tbody tr {
@@ -321,18 +367,19 @@ body {
 
 /* Visual hierarchy for busy queues */
 .queue-row.high-volume {
-    background-color: #fff5f5;
+    background-color: var(--badge-high);
     border-left: 4px solid var(--error-color);
 }
 
 .queue-row.medium-volume {
-    background-color: #fffbf0;
+    background-color: var(--badge-medium);
     border-left: 4px solid var(--warning-color);
 }
 
 .queue-name {
     font-weight: 600;
     color: var(--text-primary);
+    min-width: 150px;
 }
 
 .queue-count {
@@ -342,19 +389,61 @@ body {
 .count-badge {
     display: inline-block;
     padding: var(--spacing-xs) var(--spacing-md);
-    background-color: var(--info-color);
-    color: var(--text-white);
+    background-color: var(--badge-low);
+    color: var(--badge-low-text);
     border-radius: 20px;
     font-weight: 700;
     font-size: 1rem;
 }
 
 .queue-row.high-volume .count-badge {
-    background-color: var(--error-color);
+    background-color: var(--badge-high);
+    color: var(--badge-high-text);
 }
 
 .queue-row.medium-volume .count-badge {
-    background-color: var(--warning-color);
+    background-color: var(--badge-medium);
+    color: var(--badge-medium-text);
+}
+
+/* Metric cells and badges */
+.metric-cell {
+    text-align: center;
+}
+
+.metric-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.metric-badge.metric-success {
+    background-color: var(--badge-low);
+    color: var(--badge-low-text);
+}
+
+.metric-badge.metric-warning {
+    background-color: var(--badge-high);
+    color: var(--badge-high-text);
+}
+
+.metric-badge.metric-info {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.metric-badge.metric-neutral {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.metric-na {
+    color: var(--text-tertiary);
+    font-style: italic;
 }
 
 .queue-status {
@@ -387,7 +476,7 @@ body {
 }
 
 .queue-summary strong {
-    color: var(--primary-color);
+    color: var(--brand-primary);
 }
 
 /* ========================================
@@ -419,7 +508,7 @@ body {
 
 .loading-spinner {
     border: 4px solid var(--border-color);
-    border-top: 4px solid var(--secondary-color);
+    border-top: 4px solid var(--brand-accent);
     border-radius: 50%;
     width: 50px;
     height: 50px;
@@ -490,8 +579,21 @@ body {
    Responsive Design
    ======================================== */
 @media (max-width: 768px) {
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .app-header .logo {
+        height: 32px;
+    }
+    
     .app-header h1 {
         font-size: 1.5rem;
+    }
+    
+    .app-header .subtitle {
+        font-size: 0.875rem;
     }
     
     .action-bar {
@@ -504,6 +606,12 @@ body {
         text-align: center;
     }
     
+    /* Table remains scrollable on narrow screens */
+    .table-wrapper {
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+    }
+    
     .queue-table {
         font-size: 0.875rem;
     }
@@ -511,6 +619,18 @@ body {
     .queue-table th,
     .queue-table td {
         padding: var(--spacing-sm);
+    }
+    
+    /* Add scroll hint */
+    .table-wrapper::after {
+        content: '← Scroll for more →';
+        display: block;
+        text-align: center;
+        padding: var(--spacing-sm);
+        background-color: var(--bg-secondary);
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        border-top: 1px solid var(--border-color);
     }
 }
 
@@ -526,12 +646,49 @@ body {
         padding: var(--spacing-md);
     }
     
+    .app-header .logo {
+        height: 28px;
+    }
+    
+    .app-header h1 {
+        font-size: 1.25rem;
+    }
+    
+    .app-header .subtitle {
+        font-size: 0.75rem;
+    }
+    
     .queue-container {
         padding: var(--spacing-md);
     }
     
     .login-form {
         padding: var(--spacing-lg);
+    }
+    
+    .count-badge {
+        font-size: 0.875rem;
+        padding: 2px var(--spacing-sm);
+    }
+}
+
+/* Minimum width optimization for embedded panels (400px) */
+@media (max-width: 400px) {
+    .app-header .logo {
+        height: 24px;
+    }
+    
+    .app-header h1 {
+        font-size: 1.125rem;
+    }
+    
+    .agent-info {
+        font-size: 0.875rem;
+    }
+    
+    .btn {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 0.875rem;
     }
 }
 
@@ -543,7 +700,7 @@ body {
 a:focus,
 button:focus,
 input:focus {
-    outline: 3px solid var(--secondary-color);
+    outline: 3px solid var(--brand-accent);
     outline-offset: 2px;
 }
 
@@ -574,5 +731,92 @@ input:focus {
     
     .queue-table {
         border: 1px solid #000;
+    }
+}
+
+
+/* ========================================
+   Personal Performance Summary Card
+   ======================================== */
+.performance-summary {
+    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+    border-radius: 12px;
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.performance-summary h2 {
+    color: var(--text-white);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 var(--spacing-md) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.performance-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+}
+
+.perf-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.perf-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.perf-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.perf-content {
+    flex: 1;
+}
+
+.perf-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--brand-primary);
+    line-height: 1.2;
+}
+
+.perf-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: var(--spacing-xs);
+    font-weight: 500;
+}
+
+/* Responsive adjustments for performance cards */
+@media (max-width: 768px) {
+    .performance-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .perf-value {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .performance-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .performance-summary {
+        padding: var(--spacing-md);
     }
 }

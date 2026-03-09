@@ -1,182 +1,309 @@
-# Amazon Connect Third-Party App Workshop
+# Amazon Connect Queue Monitor
 
-Welcome to the Amazon Connect Third-Party App Workshop! This is a hands-on learning experience that teaches you how to build web applications that integrate with Amazon Connect and can be embedded directly in the agent workspace.
+A Flask-based web application that displays real-time queue metrics and agent performance data for Amazon Connect contact centers. Designed to be embedded in the Amazon Connect agent workspace or used as a standalone dashboard.
 
-## 🎯 What You'll Build
+![Application Screenshot](docs/images/screenshot.png)
 
-An agent-focused web application that:
-- Shows agents their assigned queues
-- Displays how many calls are waiting in each queue
-- Automatically detects the logged-in agent when embedded in Amazon Connect
-- Works both as a standalone app (for development) and embedded in Amazon Connect
+## Features
 
-## 🏗️ Project Structure
+- **Real-Time Queue Metrics**: View contacts in queue, available agents, and agent status
+- **Historical Performance Data**: Track calls handled, transfers, and average handle time
+- **Personal Performance Summary**: See your individual metrics for the current day
+- **Automatic Refresh**: Updates every 15 seconds to keep data current
+- **Dual Mode Operation**: Works embedded in Amazon Connect or as standalone dashboard
+- **Professional Branding**: Customizable with your organization's logo and colors
+- **Secure Authentication**: Session-based authentication with secure cookies
+- **Mobile Responsive**: Works on desktop, tablet, and mobile devices
 
-```
-amazon-connect-workshop/
-├── app/                    # Main application code
-│   ├── clients/           # Amazon Connect API client
-│   ├── services/          # Business logic (agent & queue services)
-│   ├── static/            # CSS, JavaScript, images
-│   ├── templates/         # HTML templates
-│   └── routes.py          # Web routes (URLs)
-├── config/                # Configuration management
-│   └── settings.py        # Loads settings from .env file
-├── tests/                 # Test files
-├── docs/                  # Workshop documentation
-├── requirements.txt       # Python dependencies
-├── .env.example          # Configuration template
-└── README.md             # This file!
-```
-
-## 📚 Learning Path
-
-This workshop is divided into 8 progressive phases:
-
-1. **Phase 1**: Environment Setup & SDK Installation
-2. **Phase 2**: Iframe Compatibility Setup
-3. **Phase 3**: Amazon Connect Streams API Integration
-4. **Phase 4**: Mode Detection & Agent Identification
-5. **Phase 5**: Routing Profile & Queue Retrieval
-6. **Phase 6**: Queue Metrics Retrieval
-7. **Phase 7**: Web Interface Development
-8. **Phase 8**: Third-Party App Configuration in Amazon Connect
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - AWS Account with Amazon Connect instance
-- AWS credentials configured (AWS CLI or environment variables)
-- Basic understanding of Python (we'll explain as we go!)
+- AWS credentials with Connect API permissions
+- Git (for cloning the repository)
 
-### Setup Steps
+### Local Development
 
-1. **Clone or download this project**
-
-2. **Create a virtual environment** (isolated Python environment)
+1. **Clone the repository**:
    ```bash
-   python -m venv venv
+   git clone https://github.com/Sabiha-git-hub/connect-queue-monitor.git
+   cd connect-queue-monitor
    ```
 
-3. **Activate the virtual environment**
-   - On macOS/Linux:
-     ```bash
-     source venv/bin/activate
-     ```
-   - On Windows:
-     ```bash
-     venv\Scripts\activate
-     ```
-
-4. **Install dependencies**
+2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-5. **Configure your environment**
+3. **Configure environment variables**:
    ```bash
    cp .env.example .env
+   # Edit .env with your AWS credentials and Connect instance details
    ```
-   Then edit `.env` and fill in your Amazon Connect details
 
-6. **Run the application** (once we build it!)
+4. **Run the application**:
    ```bash
-   python run.py
+   python3 run.py
    ```
 
-## 🔑 Configuration
+5. **Open in browser**:
+   ```
+   http://localhost:8080
+   ```
 
-You'll need to configure these settings in your `.env` file:
+### Production Deployment
 
-- `AWS_REGION`: Your AWS region (e.g., us-east-1)
-- `CONNECT_INSTANCE_ID`: Your Amazon Connect instance ID (UUID format)
-- `CONNECT_INSTANCE_URL`: Your Amazon Connect instance URL
-- `FLASK_SECRET_KEY`: A random secret key for sessions
-- `ALLOWED_ORIGINS`: Domains allowed to embed your app
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions to AWS Elastic Beanstalk with CloudFront.
 
-See `.env.example` for detailed explanations of each setting.
+## Documentation
 
-## 🎓 Key Concepts You'll Learn
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - System architecture and design decisions
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Step-by-step deployment to AWS
+- **[API Reference](docs/API_REFERENCE.md)** - Complete API endpoint documentation
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Cost Analysis](docs/COST_ANALYSIS.md)** - Detailed cost breakdown and optimization
+- **[Lambda Alternative](docs/LAMBDA_ALTERNATIVE.md)** - How to migrate to serverless architecture
 
-### Amazon Connect SDK (boto3)
-- How to search for agents
-- How to retrieve routing profiles
-- How to get queue metrics
-- How to handle API errors
+## Project Structure
 
-### Amazon Connect Streams API
-- How to detect the logged-in agent automatically
-- How to integrate with the Contact Control Panel (CCP)
-- How to handle embedded vs standalone modes
+```
+connect-queue-monitor/
+├── app/                          # Application code
+│   ├── __init__.py              # Flask app initialization
+│   ├── routes.py                # HTTP endpoints
+│   ├── clients/                 # AWS API clients
+│   │   └── connect_client.py   # Amazon Connect API wrapper
+│   ├── services/                # Business logic
+│   │   ├── agent_service.py    # Agent operations
+│   │   └── queue_service.py    # Queue metrics and performance
+│   ├── templates/               # HTML templates
+│   │   ├── index.html          # Login page
+│   │   └── queue_view.html     # Queue dashboard
+│   └── static/                  # Static assets
+│       ├── css/                 # Stylesheets
+│       ├── js/                  # JavaScript
+│       └── images/              # Logo and images
+├── config/                      # Configuration
+│   └── settings.py             # App settings
+├── docs/                        # Documentation
+├── .ebextensions/              # Elastic Beanstalk config
+├── .platform/                  # Nginx config
+├── requirements.txt            # Python dependencies
+├── run.py                      # Application entry point
+└── README.md                   # This file
+```
 
-### Web Development
-- Building web pages with Flask (Python web framework)
-- Creating dynamic interfaces with JavaScript
-- Styling with CSS
-- Handling user sessions
+## Technology Stack
 
-### Iframe Embedding
-- Configuring security headers (CORS, CSP)
-- Making your app work inside Amazon Connect
-- Handling cross-origin requests
+- **Backend**: Flask 2.3.3 (Python web framework)
+- **AWS Services**: 
+  - Amazon Connect (contact center)
+  - Elastic Beanstalk (hosting)
+  - CloudFront (HTTPS and CDN)
+- **Frontend**: HTML5, CSS3, JavaScript (vanilla)
+- **Authentication**: Flask sessions with secure cookies
+- **APIs**: AWS Connect API (boto3)
 
-## 🛠️ Technology Stack
+## Configuration
 
-- **Backend**: Python 3.8+ with Flask
-- **AWS SDK**: boto3 (Amazon Connect Python SDK)
-- **Frontend**: HTML, CSS, vanilla JavaScript
-- **Streams API**: Amazon Connect Streams JavaScript library
-- **Testing**: pytest, hypothesis (property-based testing)
+### Environment Variables
 
-## 📖 Documentation
+Required environment variables (set in `.env` for local, Elastic Beanstalk environment for production):
 
-Detailed phase-by-phase guides will be available in the `docs/` directory:
+```bash
+# AWS Configuration
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_SESSION_TOKEN=your-session-token  # Optional, for temporary credentials
 
-- `SETUP.md` - Detailed setup instructions
-- `PHASE_1.md` - SDK installation guide
-- `PHASE_2.md` - Iframe compatibility setup
-- `PHASE_3.md` - Streams API integration
-- `PHASE_4.md` - Agent identification
-- `PHASE_5.md` - Routing profile retrieval
-- `PHASE_6.md` - Queue metrics
-- `PHASE_7.md` - Web interface
-- `PHASE_8.md` - Third-party app configuration
-- `TROUBLESHOOTING.md` - Common issues and solutions
+# Amazon Connect Configuration
+CONNECT_INSTANCE_ID=your-instance-id
+CONNECT_INSTANCE_URL=https://your-instance.my.connect.aws
 
-## 🎨 Future Enhancement Ideas
+# Flask Configuration
+FLASK_SECRET_KEY=your-secret-key  # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+PORT=8000  # Optional, defaults to 8000
+```
 
-Once you complete the workshop, try these enhancements:
+### IAM Permissions
 
-**Beginner**:
-- Add color coding for high call volumes
-- Display last refresh timestamp
-- Show total calls across all queues
+The application requires the following IAM permissions:
 
-**Intermediate**:
-- Implement auto-refresh every 30 seconds
-- Add charts for queue volumes
-- Display additional metrics (oldest contact age, average wait time)
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "connect:SearchUsers",
+        "connect:DescribeRoutingProfile",
+        "connect:GetCurrentMetricData",
+        "connect:GetMetricDataV2"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
 
-**Advanced**:
-- Build supervisor view for multiple agents
-- Add historical trend data
-- Implement real-time updates with WebSocket
-- Integrate with other Streams API features
+## Usage
 
-## 🤝 Support
+### Standalone Mode
 
-If you get stuck:
-1. Check `docs/TROUBLESHOOTING.md`
-2. Review the phase guides in `docs/`
-3. Look at the inline code comments
-4. Check AWS documentation for Amazon Connect
+1. Navigate to the application URL
+2. Enter your Amazon Connect username
+3. Click "Login"
+4. View your assigned queues and performance metrics
+5. Dashboard auto-refreshes every 15 seconds
 
-## 📝 License
+### Embedded Mode (Amazon Connect)
 
-This workshop is for educational purposes.
+1. Add the application as a third-party app in Amazon Connect:
+   - Go to Amazon Connect admin panel
+   - Routing → Third-party applications
+   - Add application with CloudFront URL
+   - Set "Contact scope" to "Cross contacts"
 
-## 🎉 Let's Get Started!
+2. Agents will see the app in their workspace:
+   - Automatically detects agent from Streams API
+   - No manual login required
+   - Stays visible across calls
 
-Ready to build your first Amazon Connect third-party app? Let's go! 🚀
+## Metrics Explained
+
+### Queue Metrics
+
+- **Contacts in Queue**: Number of customers waiting (real-time)
+- **Calls Handled**: Total calls handled today (historical, updates with delay)
+- **Calls Transferred**: Total calls transferred today (historical, updates with delay)
+- **Available Agents**: Agents ready to take calls (real-time)
+- **Non-Productive**: Agents in custom status like "Busy" (real-time)
+- **Status**: Queue status (Active/Inactive)
+
+### Performance Summary
+
+- **Calls Handled**: Your total calls handled today
+- **Avg Handle Time**: Average time per call (talk + hold + after-call work)
+- **Calls Transferred**: Your total calls transferred today
+
+All metrics are calculated from midnight to current time in your Connect instance timezone.
+
+## Cost Estimate
+
+For a typical deployment with 50 agents:
+
+- **Elastic Beanstalk**: $17/month (t3.micro instance + load balancer)
+- **CloudFront**: $1/month (data transfer)
+- **Amazon Connect API**: $19/month (15-second refresh interval)
+- **Total**: ~$37/month
+
+See [docs/COST_ANALYSIS.md](docs/COST_ANALYSIS.md) for detailed breakdown and optimization tips.
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+python -m pytest
+
+# Run specific test file
+python -m pytest tests/test_queue_service.py
+
+# Run with coverage
+python -m pytest --cov=app
+```
+
+### Code Style
+
+The project follows PEP 8 style guidelines. Format code with:
+
+```bash
+# Install formatter
+pip install black
+
+# Format code
+black app/
+```
+
+### Adding New Features
+
+1. Create a feature branch: `git checkout -b feature/your-feature`
+2. Make changes and add tests
+3. Run tests: `python -m pytest`
+4. Commit changes: `git commit -m "Add your feature"`
+5. Push to GitHub: `git push origin feature/your-feature`
+6. Create a pull request
+
+## Troubleshooting
+
+Common issues and solutions:
+
+- **Login fails**: Check username exists in Amazon Connect, verify AWS credentials
+- **Metrics show zero**: Verify agent has queues assigned, check IAM permissions
+- **Session expires**: Sessions last 24 hours, log in again
+- **App doesn't load in Connect**: Check CSP headers, verify CORS configuration
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for complete troubleshooting guide.
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For issues and questions:
+
+- **Documentation**: Check the `docs/` directory
+- **Issues**: Open an issue on GitHub
+- **AWS Support**: For AWS-specific issues, contact AWS Support
+
+## Acknowledgments
+
+- Built for Amazon Connect contact centers
+- Uses AWS Connect API and Streams API
+- Deployed on AWS Elastic Beanstalk with CloudFront
+
+## Roadmap
+
+Future enhancements:
+
+- [ ] Real-time notifications for queue thresholds
+- [ ] Historical trend charts
+- [ ] Export metrics to CSV
+- [ ] Multi-language support
+- [ ] Dark mode theme
+- [ ] Mobile app version
+
+## Authors
+
+- **Sabiha** - Initial development
+
+## Version History
+
+- **1.0.0** (2024-03-10)
+  - Initial release
+  - Real-time queue metrics
+  - Personal performance summary
+  - Dual mode operation (embedded/standalone)
+  - 15-second auto-refresh
+  - Professional branding support
+
+---
+
+**Live Demo**: https://dzh4oz4t3wz32.cloudfront.net
+
+**Repository**: https://github.com/Sabiha-git-hub/connect-queue-monitor

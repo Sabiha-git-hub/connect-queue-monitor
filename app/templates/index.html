@@ -13,8 +13,14 @@
     <div class="container">
         <!-- Workshop Branding -->
         <header class="app-header">
-            <h1>🎯 Amazon Connect Queue Monitor</h1>
-            <p class="subtitle">Workshop: Building Third-Party Apps for Amazon Connect</p>
+            <img src="{{ url_for('static', filename='images/logo.png') }}" 
+                 alt="Company Logo" 
+                 class="logo"
+                 onerror="this.style.display='none'">
+            <div class="header-content">
+                <h1>Amazon Connect Queue Monitor</h1>
+                <p class="subtitle">Workshop: Building Third-Party Apps for Amazon Connect</p>
+            </div>
         </header>
 
         <!-- Mode Indicator (will be populated by JavaScript) -->
@@ -96,7 +102,7 @@
             const modeIndicator = document.getElementById('mode-indicator');
             const modeText = document.getElementById('mode-text');
             
-            if (modeInfo.isEmbedded) {
+            if (modeInfo.mode === 'embedded') {
                 modeText.textContent = '🔗 Embedded Mode (Amazon Connect)';
                 modeIndicator.classList.add('mode-embedded');
             } else {
@@ -153,76 +159,72 @@
             }
             
             // Step 3: Initialize based on mode
-            if (modeInfo.isEmbedded && modeInfo.isAmazonConnect) {
-                // EMBEDDED MODE: Use Streams API for automatic detection
-                console.log('📡 Starting automatic agent detection via Streams API...');
+            if (modeInfo.mode === 'embedded') {
+                // Embedded mode: Try automatic agent detection via Streams API
+                console.log('🔗 Embedded mode detected - attempting automatic agent detection...');
                 
-                // Hide login form, show loading
-                document.getElementById('login-container').style.display = 'none';
+                // Show loading indicator
                 document.getElementById('loading-container').style.display = 'block';
+                document.getElementById('login-container').style.display = 'none';
                 
                 // Initialize Streams API
-                const ccpUrl = '{{ connect_instance_url }}/ccp-v2';
+                const connectInstanceUrl = '{{ connect_instance_url }}';
+                const ccpUrl = connectInstanceUrl + '/ccp-v2';
+                
+                console.log('Initializing Streams API with CCP URL:', ccpUrl);
+                
                 const streamsAPI = new StreamsAPIIntegration(ccpUrl, 'ccp-container');
                 
                 streamsAPI.initialize()
-                    .then(agentData => {
-                        console.log('✅ Agent detected:', agentData.username);
+                    .then(username => {
+                        console.log('✅ Automatic agent detection successful:', username);
                         
-                        // Send automatic login request to backend
-                        fetch('/agent/auto-login', {
+                        // Send auto-login request to backend
+                        return fetch('/agent/auto-login', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({
-                                username: agentData.username
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Redirect to queue view
-                                window.location.href = '/agent/queues';
-                            } else {
-                                // Show error
-                                document.getElementById('loading-container').style.display = 'none';
-                                document.getElementById('login-container').style.display = 'block';
-                                
-                                const errorDiv = document.createElement('div');
-                                errorDiv.className = 'error-message';
-                                errorDiv.innerHTML = '<strong>⚠️ Error:</strong> ' + data.error;
-                                document.getElementById('login-container').appendChild(errorDiv);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('❌ Auto-login failed:', error);
-                            document.getElementById('loading-container').style.display = 'none';
-                            document.getElementById('login-container').style.display = 'block';
-                            
-                            const errorDiv = document.createElement('div');
-                            errorDiv.className = 'error-message';
-                            errorDiv.innerHTML = '<strong>⚠️ Error:</strong> Automatic login failed. Please try manual login.';
-                            document.getElementById('login-container').appendChild(errorDiv);
+                            body: JSON.stringify({ username: username })
                         });
                     })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('✅ Auto-login successful, redirecting to queue view...');
+                            // Redirect to queue view
+                            window.location.href = '/agent/queues';
+                        } else {
+                            console.error('❌ Auto-login failed:', data.error);
+                            // Fall back to manual login
+                            showManualLoginFallback(data.error);
+                        }
+                    })
                     .catch(error => {
-                        console.error('❌ Streams API initialization failed:', error);
-                        
-                        // Fallback to manual login
-                        document.getElementById('loading-container').style.display = 'none';
-                        document.getElementById('login-container').style.display = 'block';
-                        
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'error-message';
-                        errorDiv.innerHTML = '<strong>⚠️ Error:</strong> Automatic detection failed. Please use manual login below.';
-                        document.getElementById('login-container').appendChild(errorDiv);
+                        console.error('❌ Automatic detection failed:', error);
+                        // Fall back to manual login
+                        showManualLoginFallback(error.message);
                     });
                 
             } else {
-                // STANDALONE MODE: Show manual login form
+                // Standalone mode: Show manual login form
                 console.log('📝 Standalone mode - showing manual login form');
                 document.getElementById('login-container').style.display = 'block';
+            }
+            
+            // Helper function to show manual login as fallback
+            function showManualLoginFallback(errorMessage) {
+                console.log('Falling back to manual login');
+                document.getElementById('loading-container').style.display = 'none';
+                document.getElementById('login-container').style.display = 'block';
+                
+                // Show error message if provided
+                if (errorMessage) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message';
+                    errorDiv.innerHTML = '<strong>⚠️ Automatic detection failed:</strong> ' + errorMessage + '<br>Please login manually.';
+                    document.getElementById('login-container').insertBefore(errorDiv, document.getElementById('login-form'));
+                }
             }
         });
     </script>
