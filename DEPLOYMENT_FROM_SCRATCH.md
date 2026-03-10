@@ -434,7 +434,104 @@ eb setenv \
 
 Replace with your actual values.
 
-### 7.4 Verify Deployment
+### 7.4 Test Elastic Beanstalk Endpoints
+
+Before setting up CloudFront, verify all endpoints work directly on Elastic Beanstalk.
+
+**Your Elastic Beanstalk URL format**:
+```
+http://connect-queue-monitor-env.eba-abc123.us-east-1.elasticbeanstalk.com
+```
+
+#### Test Each Endpoint
+
+**1. Test Login Page (GET /)**
+```bash
+# Using browser
+open http://your-eb-url
+
+# Using curl
+curl http://your-eb-url
+```
+
+**Expected**: HTML page with login form
+
+**2. Test Login (POST /login)**
+```bash
+curl -X POST http://your-eb-url/login \
+  -d "username=Agent1" \
+  -c cookies.txt \
+  -L
+```
+
+**Expected**: Redirect to `/queue-view` with session cookie
+
+**3. Test Queue View (GET /queue-view)**
+```bash
+curl http://your-eb-url/queue-view \
+  -b cookies.txt
+```
+
+**Expected**: HTML page with queue dashboard
+
+**4. Test Refresh Endpoint (GET /refresh)**
+```bash
+curl http://your-eb-url/refresh \
+  -b cookies.txt \
+  -H "X-Requested-With: XMLHttpRequest"
+```
+
+**Expected**: JSON response with queue data
+```json
+{
+  "queues": [
+    {
+      "name": "TestQueue",
+      "contacts_in_queue": 0,
+      "calls_handled": 5,
+      "calls_transferred": 1,
+      "available_agents": 2,
+      "non_productive_agents": 0,
+      "status": "Active"
+    }
+  ],
+  "performance_summary": {
+    "calls_handled": 5,
+    "avg_handle_time": "00:03:45",
+    "calls_transferred": 1
+  }
+}
+```
+
+**5. Test Logout (POST /logout)**
+```bash
+curl -X POST http://your-eb-url/logout \
+  -b cookies.txt \
+  -L
+```
+
+**Expected**: Redirect to `/` (login page)
+
+#### Endpoint Testing Checklist
+
+- [ ] **GET /** - Login page loads
+- [ ] **POST /login** - Login works, creates session
+- [ ] **GET /queue-view** - Dashboard loads with queues
+- [ ] **GET /refresh** - Returns JSON with metrics
+- [ ] **POST /logout** - Clears session, redirects to login
+- [ ] **Static files** - CSS, JS, images load correctly
+
+#### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| 502 Bad Gateway | Wait 2-3 minutes for app to start |
+| 404 Not Found | Check URL spelling |
+| 500 Internal Server Error | Check logs: `eb logs` |
+| Login fails | Verify environment variables are set |
+| No queues shown | Check agent has queues assigned |
+
+### 7.5 Verify Deployment
 
 ```bash
 # Check environment status
@@ -491,7 +588,107 @@ Save this URL - you'll need it for CloudFront.
    - Example: `d1234abcd5678.cloudfront.net`
 3. Your HTTPS URL: `https://d1234abcd5678.cloudfront.net`
 
-### 8.3 Test CloudFront URL
+### 8.3 Test CloudFront Endpoints
+
+After CloudFront deployment completes, test all endpoints through HTTPS.
+
+**Your CloudFront URL format**:
+```
+https://d1234abcd5678.cloudfront.net
+```
+
+#### Test Each Endpoint via CloudFront
+
+**1. Test Login Page (GET /)**
+```bash
+# Using browser
+open https://your-cloudfront-url
+
+# Using curl
+curl https://your-cloudfront-url
+```
+
+**Expected**: HTML page with login form (same as Elastic Beanstalk)
+
+**2. Test Login (POST /login)**
+```bash
+curl -X POST https://your-cloudfront-url/login \
+  -d "username=Agent1" \
+  -c cookies.txt \
+  -L
+```
+
+**Expected**: Redirect to `/queue-view` with secure session cookie
+
+**3. Test Queue View (GET /queue-view)**
+```bash
+curl https://your-cloudfront-url/queue-view \
+  -b cookies.txt
+```
+
+**Expected**: HTML page with queue dashboard
+
+**4. Test Refresh Endpoint (GET /refresh)**
+```bash
+curl https://your-cloudfront-url/refresh \
+  -b cookies.txt \
+  -H "X-Requested-With: XMLHttpRequest"
+```
+
+**Expected**: JSON response with queue data (same format as EB test)
+
+**5. Test Logout (POST /logout)**
+```bash
+curl -X POST https://your-cloudfront-url/logout \
+  -b cookies.txt \
+  -L
+```
+
+**Expected**: Redirect to `/` (login page)
+
+**6. Test Static Files**
+```bash
+# Test CSS
+curl https://your-cloudfront-url/static/css/styles.css
+
+# Test JavaScript
+curl https://your-cloudfront-url/static/js/app.js
+
+# Test Logo
+curl https://your-cloudfront-url/static/images/logo.png
+```
+
+**Expected**: Files load successfully
+
+#### CloudFront Endpoint Testing Checklist
+
+- [ ] **GET /** - Login page loads via HTTPS
+- [ ] **POST /login** - Login works with secure cookies
+- [ ] **GET /queue-view** - Dashboard loads
+- [ ] **GET /refresh** - Returns JSON metrics
+- [ ] **POST /logout** - Logout works
+- [ ] **Static CSS** - Styles load correctly
+- [ ] **Static JS** - JavaScript loads correctly
+- [ ] **Static Images** - Logo displays
+- [ ] **HTTPS redirect** - HTTP redirects to HTTPS
+- [ ] **Session persistence** - Session works across requests
+
+#### Compare Elastic Beanstalk vs CloudFront
+
+| Test | Elastic Beanstalk (HTTP) | CloudFront (HTTPS) | Status |
+|------|--------------------------|---------------------|--------|
+| Login page | ✅ Works | ✅ Works | |
+| Login POST | ✅ Works | ✅ Works | |
+| Queue view | ✅ Works | ✅ Works | |
+| Refresh JSON | ✅ Works | ✅ Works | |
+| Logout | ✅ Works | ✅ Works | |
+| Static files | ✅ Works | ✅ Works | |
+| Session cookies | ⚠️ Not secure | ✅ Secure | |
+| Amazon Connect | ❌ Won't work | ✅ Works | |
+
+**Important**: Always use CloudFront (HTTPS) URL for Amazon Connect integration. The HTTP Elastic Beanstalk URL won't work in Connect due to security requirements.
+
+### 8.4 Test in Browser
 
 1. Open browser: `https://your-cloudfront-url`
 2. Test login with `Agent1`
@@ -711,6 +908,299 @@ See `docs/COST_ANALYSIS.md` for detailed breakdown.
 - **Architecture**: See `docs/ARCHITECTURE.md`
 - **API Reference**: See `docs/API_REFERENCE.md`
 - **GitHub Issues**: https://github.com/Sabiha-git-hub/connect-queue-monitor/issues
+
+---
+
+---
+
+## Endpoint Reference
+
+Complete list of all application endpoints for testing and integration.
+
+### Base URLs
+
+| Environment | URL | Use Case |
+|-------------|-----|----------|
+| **Local Development** | `http://localhost:8080` | Local testing |
+| **Elastic Beanstalk** | `http://your-env.elasticbeanstalk.com` | Direct backend testing |
+| **CloudFront (Production)** | `https://your-distribution.cloudfront.net` | Production use, Connect integration |
+
+### Available Endpoints
+
+#### 1. GET / (Login Page)
+
+**Description**: Displays login form
+
+**URL**: `https://your-cloudfront-url/`
+
+**Method**: `GET`
+
+**Authentication**: Not required
+
+**Response**: HTML page with login form
+
+**Test**:
+```bash
+curl https://your-cloudfront-url/
+```
+
+---
+
+#### 2. POST /login (Authenticate User)
+
+**Description**: Authenticates agent and creates session
+
+**URL**: `https://your-cloudfront-url/login`
+
+**Method**: `POST`
+
+**Authentication**: Not required
+
+**Parameters**:
+- `username` (form data, required): Amazon Connect agent username
+
+**Response**: 
+- Success: Redirect to `/queue-view` with session cookie
+- Failure: Login page with error message
+
+**Test**:
+```bash
+curl -X POST https://your-cloudfront-url/login \
+  -d "username=Agent1" \
+  -c cookies.txt \
+  -L
+```
+
+---
+
+#### 3. GET /queue-view (Queue Dashboard)
+
+**Description**: Displays queue metrics and performance summary
+
+**URL**: `https://your-cloudfront-url/queue-view`
+
+**Method**: `GET`
+
+**Authentication**: Required (session cookie)
+
+**Response**: HTML page with:
+- Queue metrics table
+- Personal performance summary
+- Auto-refresh JavaScript
+
+**Test**:
+```bash
+curl https://your-cloudfront-url/queue-view \
+  -b cookies.txt
+```
+
+---
+
+#### 4. GET /refresh (Refresh Metrics)
+
+**Description**: Returns updated queue metrics and performance data (AJAX endpoint)
+
+**URL**: `https://your-cloudfront-url/refresh`
+
+**Method**: `GET`
+
+**Authentication**: Required (session cookie)
+
+**Headers**:
+- `X-Requested-With: XMLHttpRequest` (recommended)
+
+**Response**: JSON object
+```json
+{
+  "queues": [
+    {
+      "name": "string",
+      "contacts_in_queue": number,
+      "calls_handled": number,
+      "calls_transferred": number,
+      "available_agents": number,
+      "non_productive_agents": number,
+      "status": "Active" | "Inactive"
+    }
+  ],
+  "performance_summary": {
+    "calls_handled": number,
+    "avg_handle_time": "HH:MM:SS",
+    "calls_transferred": number
+  }
+}
+```
+
+**Test**:
+```bash
+curl https://your-cloudfront-url/refresh \
+  -b cookies.txt \
+  -H "X-Requested-With: XMLHttpRequest"
+```
+
+---
+
+#### 5. POST /logout (End Session)
+
+**Description**: Destroys session and redirects to login
+
+**URL**: `https://your-cloudfront-url/logout`
+
+**Method**: `POST`
+
+**Authentication**: Required (session cookie)
+
+**Response**: Redirect to `/` (login page)
+
+**Test**:
+```bash
+curl -X POST https://your-cloudfront-url/logout \
+  -b cookies.txt \
+  -L
+```
+
+---
+
+### Static File Endpoints
+
+#### CSS Stylesheet
+
+**URL**: `https://your-cloudfront-url/static/css/styles.css`
+
+**Method**: `GET`
+
+**Authentication**: Not required
+
+**Test**:
+```bash
+curl https://your-cloudfront-url/static/css/styles.css
+```
+
+---
+
+#### JavaScript Files
+
+**URLs**:
+- `https://your-cloudfront-url/static/js/mode-detector.js`
+- `https://your-cloudfront-url/static/js/streams.js`
+- `https://your-cloudfront-url/static/js/app.js`
+
+**Method**: `GET`
+
+**Authentication**: Not required
+
+**Test**:
+```bash
+curl https://your-cloudfront-url/static/js/app.js
+```
+
+---
+
+#### Logo Image
+
+**URL**: `https://your-cloudfront-url/static/images/logo.png`
+
+**Method**: `GET`
+
+**Authentication**: Not required
+
+**Test**:
+```bash
+curl https://your-cloudfront-url/static/images/logo.png
+```
+
+---
+
+### Testing Script
+
+Save this as `test-endpoints.sh` for quick testing:
+
+```bash
+#!/bin/bash
+
+# Configuration
+BASE_URL="https://your-cloudfront-url"
+USERNAME="Agent1"
+
+echo "Testing Connect Queue Monitor Endpoints"
+echo "========================================"
+echo ""
+
+# Test 1: Login Page
+echo "1. Testing GET / (Login Page)..."
+curl -s -o /dev/null -w "Status: %{http_code}\n" $BASE_URL/
+echo ""
+
+# Test 2: Login
+echo "2. Testing POST /login..."
+curl -s -X POST $BASE_URL/login \
+  -d "username=$USERNAME" \
+  -c cookies.txt \
+  -o /dev/null \
+  -w "Status: %{http_code}\n"
+echo ""
+
+# Test 3: Queue View
+echo "3. Testing GET /queue-view..."
+curl -s $BASE_URL/queue-view \
+  -b cookies.txt \
+  -o /dev/null \
+  -w "Status: %{http_code}\n"
+echo ""
+
+# Test 4: Refresh
+echo "4. Testing GET /refresh..."
+curl -s $BASE_URL/refresh \
+  -b cookies.txt \
+  -H "X-Requested-With: XMLHttpRequest" \
+  -o /dev/null \
+  -w "Status: %{http_code}\n"
+echo ""
+
+# Test 5: Logout
+echo "5. Testing POST /logout..."
+curl -s -X POST $BASE_URL/logout \
+  -b cookies.txt \
+  -o /dev/null \
+  -w "Status: %{http_code}\n"
+echo ""
+
+# Test 6: Static CSS
+echo "6. Testing static CSS..."
+curl -s $BASE_URL/static/css/styles.css \
+  -o /dev/null \
+  -w "Status: %{http_code}\n"
+echo ""
+
+# Test 7: Static JS
+echo "7. Testing static JavaScript..."
+curl -s $BASE_URL/static/js/app.js \
+  -o /dev/null \
+  -w "Status: %{http_code}\n"
+echo ""
+
+# Test 8: Static Image
+echo "8. Testing static image..."
+curl -s $BASE_URL/static/images/logo.png \
+  -o /dev/null \
+  -w "Status: %{http_code}\n"
+echo ""
+
+# Cleanup
+rm -f cookies.txt
+
+echo "Testing complete!"
+echo ""
+echo "Expected results:"
+echo "  - All status codes should be 200 or 302 (redirect)"
+echo "  - 401 = Authentication required (expected for queue-view without login)"
+```
+
+**Usage**:
+```bash
+chmod +x test-endpoints.sh
+./test-endpoints.sh
+```
 
 ---
 
